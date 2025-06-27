@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processor - PIL Tools</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px 20px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .image-display {
+            display: flex;
+            gap: 30px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .image-container {
+            flex: 1;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .image-container h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 3px solid #f0f0f0;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px 30px 20px 30px;
+            margin: 30px 0;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        .compact-group {
+            margin-bottom: 10px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 0;
+        }
+
+        .main-action-group {
+            margin-top: 18px;
+            gap: 18px;
+            justify-content: flex-start;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .image-display {
+                flex-direction: column;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                padding: 15px 8px 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ Image Processor</h1>
+            <p>Professional image manipulation tools powered by PIL</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-hint">Supports: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (Max: 16MB)</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+
+            <div class="image-display" id="imageDisplay" style="display: none;">
+                <div class="image-container" style="position: relative;">
+                    <h3>Original Image</h3>
+                    <img id="originalImage" class="image-preview" alt="Original" style="position: relative; z-index: 1; display: block;">
+                    <canvas id="bboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; pointer-events: auto;"></canvas>
+                    <div id="imageSizeInfo" style="margin-top: 10px; color: #444; font-size: 1rem; font-weight: 500;"></div>
+                </div>
+                <div class="image-container">
+                    <h3>Processed Image</h3>
+                    <img id="processedImage" class="image-preview" alt="Processed" style="position: relative; z-index: 1; display: block;">
+                    <canvas id="processedBboxCanvas" style="position: absolute; left: 0; top: 0; z-index: 2; pointer-events: auto;"></canvas>
+                    <div id="processedSizeInfo" style="margin-top: 10px; color: #444; font-size: 1rem; font-weight: 500;"></div>
+                    <div id="processedBboxCoords" style="margin-top: 10px; color: #667eea; font-weight: bold; font-size: 1.1rem; display: none;"></div>
+                </div>
+            </div>
+            <div id="bboxCoords" style="margin: 20px auto 0 auto; max-width: 600px; background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; color: #333; font-weight: bold; font-size: 1.1rem; padding: 10px; text-align: center; display: none;"></div>
+
+            <div id="controls" class="controls" style="display: none;">
+                <div class="control-group">
+                    <h3>Brightness</h3>
+                    <div class="slider-container">
+                        <input type="range" id="brightnessSlider" class="slider" min="0" max="50" step="0.01" value="1.0">
+                        <input type="number" id="brightnessNumber" min="0" max="50" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
+                        <span id="brightnessValue" class="value-display">1.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Contrast</h3>
+                    <div class="slider-container">
+                        <input type="range" id="contrastSlider" class="slider" min="0" max="10" step="0.01" value="1.0">
+                        <input type="number" id="contrastNumber" min="0" max="10" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
+                        <span id="contrastValue" class="value-display">1.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group compact-group">
+                    <h3>Rotation</h3>
+                    <div class="slider-container">
+                        <input type="range" id="rotationSlider" class="slider" min="-180" max="180" step="1" value="0">
+                        <span id="rotationValue" class="value-display">0°</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Flip</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="toggleFlip('horizontal')">Flip Horizontal</button>
+                        <button class="btn btn-secondary" onclick="toggleFlip('vertical')">Flip Vertical</button>
+                    </div>
+                </div>
+
+                <div class="button-group main-action-group">
+                    <button class="btn btn-primary" onclick="applyAllSettings()">Apply All Settings</button>
+                    <button class="btn btn-success" onclick="downloadImage()">Download Processed Image</button>
+                    <button class="btn btn-secondary" onclick="resetSettings()">Reset All Settings</button>
+                </div>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <div>Processing image...</div>
+            </div>
+
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let originalImageData = null;
+        let currentImageData = null;
+        let originalFilename = null;
+        let imageId = null;
+        
+        // Track all settings
+        let settings = {
+            brightness: 1.0,
+            contrast: 1.0,
+            rotation: 0,
+            flip_horizontal: false,
+            flip_vertical: false
+        };
+
+        // Upload area functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Slider value updates
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const brightnessNumber = document.getElementById('brightnessNumber');
+        brightnessSlider.addEventListener('input', (e) => {
+            settings.brightness = parseFloat(e.target.value);
+            brightnessNumber.value = e.target.value;
+            document.getElementById('brightnessValue').textContent = e.target.value;
+        });
+        brightnessNumber.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            if (isNaN(val)) val = 1.0;
+            if (val < 0) val = 0;
+            if (val > 50) val = 50;
+            settings.brightness = val;
+            brightnessSlider.value = val;
+            document.getElementById('brightnessValue').textContent = val;
+        });
+
+        const contrastSlider = document.getElementById('contrastSlider');
+        const contrastNumber = document.getElementById('contrastNumber');
+        contrastSlider.addEventListener('input', (e) => {
+            settings.contrast = parseFloat(e.target.value);
+            contrastNumber.value = e.target.value;
+            document.getElementById('contrastValue').textContent = e.target.value;
+        });
+        contrastNumber.addEventListener('input', (e) => {
+            let val = parseFloat(e.target.value);
+            if (isNaN(val)) val = 1.0;
+            if (val < 0) val = 0;
+            if (val > 10) val = 10;
+            settings.contrast = val;
+            contrastSlider.value = val;
+            document.getElementById('contrastValue').textContent = val;
+        });
+
+        document.getElementById('rotationSlider').addEventListener('input', (e) => {
+            settings.rotation = parseInt(e.target.value);
+            document.getElementById('rotationValue').textContent = e.target.value + '°';
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showMessage('Please select a valid image file.', 'error');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showMessage('File size must be less than 16MB.', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading(true);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    originalImageData = data.image;
+                    currentImageData = data.image;
+                    originalFilename = data.filename;
+                    imageId = data.image_id;
+                    
+                    // Reset settings
+                    resetSettings();
+                    
+                    document.getElementById('originalImage').src = data.image;
+                    document.getElementById('processedImage').src = data.image;
+                    
+                    document.getElementById('imageDisplay').style.display = 'flex';
+                    document.getElementById('controls').style.display = 'block';
+                    
+                    showMessage('Image uploaded successfully!', 'success');
+                } else {
+                    showMessage(data.error || 'Upload failed.', 'error');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showMessage('Upload failed: ' + error.message, 'error');
+            });
+        }
+
+        function updateProcessedSizeInfo() {
+            const info = document.getElementById('processedSizeInfo');
+            const img = document.getElementById('processedImage');
+            info.textContent = img.naturalWidth && img.naturalHeight ? `Image size: ${img.naturalWidth} × ${img.naturalHeight} px` : '';
+        }
+        document.getElementById('processedImage').onload = updateProcessedSizeInfo;
+
+        function applyAllSettings() {
+            if (!imageId) {
+                showMessage('Please upload an image first.', 'error');
+                return;
+            }
+
+            showLoading(true);
+
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_id: imageId,
+                    settings: settings
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    currentImageData = data.processed_image;
+                    document.getElementById('processedImage').src = data.processed_image;
+                    updateProcessedSizeInfo();
+                    showMessage('Image processed successfully!', 'success');
+                } else {
+                    showMessage(data.error || 'Processing failed.', 'error');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showMessage('Processing failed: ' + error.message, 'error');
+            });
+        }
+
+        function toggleFlip(direction) {
+            if (direction === 'horizontal') {
+                settings.flip_horizontal = !settings.flip_horizontal;
+            } else if (direction === 'vertical') {
+                settings.flip_vertical = !settings.flip_vertical;
+            }
+            
+            // Update button appearance
+            const horizontalBtn = document.querySelector('button[onclick="toggleFlip(\'horizontal\')"]');
+            const verticalBtn = document.querySelector('button[onclick="toggleFlip(\'vertical\')"]');
+            
+            horizontalBtn.style.background = settings.flip_horizontal ? '#28a745' : '#6c757d';
+            verticalBtn.style.background = settings.flip_vertical ? '#28a745' : '#6c757d';
+            
+            applyAllSettings();
+        }
+
+        function downloadImage() {
+            if (!imageId || !originalFilename) {
+                showMessage('No processed image to download.', 'error');
+                return;
+            }
+
+            fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_id: imageId,
+                    filename: originalFilename,
+                    settings: settings
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Download failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = originalFilename.replace(/\.[^/.]+$/, '_processed.png');
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                showMessage('Image downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showMessage('Download failed: ' + error.message, 'error');
+            });
+        }
+
+        function resetSettings() {
+            settings = {
+                brightness: 1.0,
+                contrast: 1.0,
+                rotation: 0,
+                flip_horizontal: false,
+                flip_vertical: false
+            };
+            
+            // Reset sliders
+            document.getElementById('brightnessSlider').value = 1.0;
+            document.getElementById('brightnessNumber').value = 1.0;
+            document.getElementById('contrastSlider').value = 1.0;
+            document.getElementById('contrastNumber').value = 1.0;
+            document.getElementById('rotationSlider').value = 0;
+            document.getElementById('rotationValue').textContent = '0°';
+            
+            // Reset flip buttons
+            const horizontalBtn = document.querySelector('button[onclick="toggleFlip(\'horizontal\')"]');
+            const verticalBtn = document.querySelector('button[onclick="toggleFlip(\'vertical\')"]');
+            horizontalBtn.style.background = '#6c757d';
+            verticalBtn.style.background = '#6c757d';
+            
+            if (originalImageData) {
+                currentImageData = originalImageData;
+                document.getElementById('processedImage').src = originalImageData;
+                updateProcessedSizeInfo();
+                showMessage('Settings reset to original.', 'success');
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // --- Bounding Box Feature ---
+        const originalImage = document.getElementById('originalImage');
+        const bboxCanvas = document.getElementById('bboxCanvas');
+        const bboxCoords = document.getElementById('bboxCoords');
+        let bbox = null;
+        let isDrawing = false;
+        let startX = 0, startY = 0;
+
+        function setCanvasSize() {
+            bboxCanvas.width = originalImage.width;
+            bboxCanvas.height = originalImage.height;
+            bboxCanvas.style.width = originalImage.width + 'px';
+            bboxCanvas.style.height = originalImage.height + 'px';
+            bboxCanvas.style.left = originalImage.offsetLeft + 'px';
+            bboxCanvas.style.top = originalImage.offsetTop + 'px';
+        }
+
+        originalImage.onload = function() {
+            setCanvasSize();
+            clearBbox();
+            // Show image size
+            const info = document.getElementById('imageSizeInfo');
+            info.textContent = `Image size: ${originalImage.naturalWidth} × ${originalImage.naturalHeight} px`;
+        };
+
+        window.addEventListener('resize', setCanvasSize);
+
+        bboxCanvas.addEventListener('mousedown', function(e) {
+            setCanvasSize();
+            isDrawing = true;
+            const rect = bboxCanvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            bbox = { x: startX, y: startY, w: 0, h: 0 };
+            drawBbox();
+            bboxCoords.textContent = '';
+        });
+
+        bboxCanvas.addEventListener('mousemove', function(e) {
+            if (!isDrawing) return;
+            const rect = bboxCanvas.getBoundingClientRect();
+            const currX = e.clientX - rect.left;
+            const currY = e.clientY - rect.top;
+            bbox.w = currX - startX;
+            bbox.h = currY - startY;
+            drawBbox();
+            showCoords();
+        });
+
+        bboxCanvas.addEventListener('mouseup', function(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            showCoords();
+        });
+
+        bboxCanvas.addEventListener('mouseleave', function(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            showCoords();
+        });
+
+        function drawBbox() {
+            setCanvasSize();
+            const ctx = bboxCanvas.getContext('2d');
+            ctx.clearRect(0, 0, bboxCanvas.width, bboxCanvas.height);
+            if (!bbox) return;
+            ctx.strokeStyle = '#28a745';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(bbox.x, bbox.y, bbox.w, bbox.h);
+            ctx.setLineDash([]);
+        }
+
+        function showCoords() {
+            if (!bbox) {
+                bboxCoords.style.display = 'none';
+                return;
+            }
+            const x1 = Math.round(Math.min(bbox.x, bbox.x + bbox.w));
+            const y1 = Math.round(Math.min(bbox.y, bbox.y + bbox.h));
+            const x2 = Math.round(Math.max(bbox.x, bbox.x + bbox.w));
+            const y2 = Math.round(Math.max(bbox.y, bbox.y + bbox.h));
+            const w = Math.abs(x2 - x1);
+            const h = Math.abs(y2 - y1);
+            // Normalized
+            const nx1 = (x1 / originalImage.width).toFixed(4);
+            const ny1 = (y1 / originalImage.height).toFixed(4);
+            const nx2 = (x2 / originalImage.width).toFixed(4);
+            const ny2 = (y2 / originalImage.height).toFixed(4);
+            bboxCoords.innerHTML = `Box: x1=${x1}, y1=${y1}, x2=${x2}, y2=${y2}, width=${w}, height=${h}<br>Normalized: x1=${nx1}, y1=${ny1}, x2=${nx2}, y2=${ny2}`;
+            bboxCoords.style.display = 'block';
+        }
+
+        function clearBbox() {
+            bbox = null;
+            setCanvasSize();
+            bboxCanvas.getContext('2d').clearRect(0, 0, bboxCanvas.width, bboxCanvas.height);
+            bboxCoords.textContent = '';
+            bboxCoords.style.display = 'none';
+        }
+
+        // --- Processed Image Bounding Box Feature ---
+        const processedImage = document.getElementById('processedImage');
+        const processedBboxCanvas = document.getElementById('processedBboxCanvas');
+        const processedBboxCoords = document.getElementById('processedBboxCoords');
+        let processedBbox = null;
+        let processedIsDrawing = false;
+        let processedStartX = 0, processedStartY = 0;
+
+        function setProcessedCanvasSize() {
+            processedBboxCanvas.width = processedImage.width;
+            processedBboxCanvas.height = processedImage.height;
+            processedBboxCanvas.style.width = processedImage.width + 'px';
+            processedBboxCanvas.style.height = processedImage.height + 'px';
+            processedBboxCanvas.style.left = processedImage.offsetLeft + 'px';
+            processedBboxCanvas.style.top = processedImage.offsetTop + 'px';
+        }
+
+        processedImage.onload = function() {
+            updateProcessedSizeInfo();
+            setProcessedCanvasSize();
+            clearProcessedBbox();
+        };
+
+        window.addEventListener('resize', setProcessedCanvasSize);
+
+        processedBboxCanvas.addEventListener('mousedown', function(e) {
+            setProcessedCanvasSize();
+            processedIsDrawing = true;
+            const rect = processedBboxCanvas.getBoundingClientRect();
+            processedStartX = e.clientX - rect.left;
+            processedStartY = e.clientY - rect.top;
+            processedBbox = { x: processedStartX, y: processedStartY, w: 0, h: 0 };
+            drawProcessedBbox();
+            processedBboxCoords.textContent = '';
+            processedBboxCoords.style.display = 'none';
+        });
+
+        processedBboxCanvas.addEventListener('mousemove', function(e) {
+            if (!processedIsDrawing) return;
+            const rect = processedBboxCanvas.getBoundingClientRect();
+            const currX = e.clientX - rect.left;
+            const currY = e.clientY - rect.top;
+            processedBbox.w = currX - processedStartX;
+            processedBbox.h = currY - processedStartY;
+            drawProcessedBbox();
+            showProcessedCoords();
+        });
+
+        processedBboxCanvas.addEventListener('mouseup', function(e) {
+            if (!processedIsDrawing) return;
+            processedIsDrawing = false;
+            showProcessedCoords();
+        });
+
+        processedBboxCanvas.addEventListener('mouseleave', function(e) {
+            if (!processedIsDrawing) return;
+            processedIsDrawing = false;
+            showProcessedCoords();
+        });
+
+        function drawProcessedBbox() {
+            setProcessedCanvasSize();
+            const ctx = processedBboxCanvas.getContext('2d');
+            ctx.clearRect(0, 0, processedBboxCanvas.width, processedBboxCanvas.height);
+            if (!processedBbox) return;
+            ctx.strokeStyle = '#28a745';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(processedBbox.x, processedBbox.y, processedBbox.w, processedBbox.h);
+            ctx.setLineDash([]);
+        }
+
+        function showProcessedCoords() {
+            if (!processedBbox) {
+                processedBboxCoords.style.display = 'none';
+                return;
+            }
+            // Scale box coordinates to original processed image size
+            const displayW = processedImage.width;
+            const displayH = processedImage.height;
+            const naturalW = processedImage.naturalWidth;
+            const naturalH = processedImage.naturalHeight;
+            const scaleX = naturalW / displayW;
+            const scaleY = naturalH / displayH;
+            const x1_disp = Math.min(processedBbox.x, processedBbox.x + processedBbox.w);
+            const y1_disp = Math.min(processedBbox.y, processedBbox.y + processedBbox.h);
+            const x2_disp = Math.max(processedBbox.x, processedBbox.x + processedBbox.w);
+            const y2_disp = Math.max(processedBbox.y, processedBbox.y + processedBbox.h);
+            const x1 = Math.round(x1_disp * scaleX);
+            const y1 = Math.round(y1_disp * scaleY);
+            const x2 = Math.round(x2_disp * scaleX);
+            const y2 = Math.round(y2_disp * scaleY);
+            const w = Math.abs(x2 - x1);
+            const h = Math.abs(y2 - y1);
+            processedBboxCoords.textContent = `Box: x1=${x1}, y1=${y1}, x2=${x2}, y2=${y2}, width=${w}, height=${h}`;
+            processedBboxCoords.style.display = 'block';
+        }
+
+        function clearProcessedBbox() {
+            processedBbox = null;
+            setProcessedCanvasSize();
+            processedBboxCanvas.getContext('2d').clearRect(0, 0, processedBboxCanvas.width, processedBboxCanvas.height);
+            processedBboxCoords.textContent = '';
+            processedBboxCoords.style.display = 'none';
+        }
+    </script>
+</body>
+</html> 

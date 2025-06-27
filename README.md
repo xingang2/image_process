@@ -8,8 +8,6 @@ A modern web application for image manipulation using Python PIL (Pillow) librar
 - **Contrast Adjustment**: Enhance or reduce image contrast
 - **Rotation**: Rotate images without expanding (maintains original dimensions)
 - **Flip Operations**: Horizontal and vertical image flipping
-- **High Quality**: No resolution loss during processing
-- **Modern UI**: Beautiful, responsive design with drag-and-drop upload
 - **Multiple Formats**: Supports PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP
 
 ## Local Development

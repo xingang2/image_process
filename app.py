@@ -6,8 +6,6 @@ from PIL import Image, ImageEnhance
 from werkzeug.utils import secure_filename
 import tempfile
 import math
-import cv2
-import numpy as np
 from typing import Sequence, Tuple, Optional
 
 app = Flask(__name__)
@@ -192,41 +190,6 @@ def download():
     
     except Exception as e:
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
-
-def degrade_perspective(
-    img,
-    src_pts: Sequence[Tuple[int, int]],
-    dst_pts: Sequence[Tuple[int, int]],
-    out_size: Optional[Tuple[int, int]] = None,
-) -> Image.Image:
-    im = img if isinstance(img, Image.Image) else Image.open(img)
-    out_size = out_size or im.size
-    M = cv2.getPerspectiveTransform(np.float32(src_pts), np.float32(dst_pts))
-    warped = cv2.warpPerspective(np.array(im), M, out_size)
-    return Image.fromarray(warped)
-
-@app.route('/perspective', methods=['POST'])
-def perspective():
-    data = request.get_json()
-    if not data or 'image' not in data or 'dst_pts' not in data:
-        return jsonify({'error': 'Missing required data'}), 400
-    try:
-        image_data = data['image']
-        dst_pts = data['dst_pts']
-        out_size = tuple(data['out_size']) if 'out_size' in data else None
-        # Decode image
-        image_bytes = base64.b64decode(image_data.split(',')[1])
-        image = Image.open(io.BytesIO(image_bytes))
-        w, h = image.size
-        src_pts = [(0,0), (w-1,0), (w-1,h-1), (0,h-1)]
-        result = degrade_perspective(image, src_pts, dst_pts, out_size)
-        buffer = io.BytesIO()
-        result.save(buffer, format='PNG')
-        buffer.seek(0)
-        img_str = base64.b64encode(buffer.getvalue()).decode()
-        return jsonify({'success': True, 'perspective_image': f'data:image/png;base64,{img_str}'})
-    except Exception as e:
-        return jsonify({'error': f'Perspective transform failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

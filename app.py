@@ -50,15 +50,19 @@ def process_image_with_settings(original_image_data, settings):
         image_bytes = base64.b64decode(original_image_data.split(',')[1])
         image = Image.open(io.BytesIO(image_bytes))
         
+        # Clamp brightness and contrast
+        brightness = float(settings.get('brightness', 1.0))
+        brightness = max(0.2, min(1.0, brightness))
+        contrast = float(settings.get('contrast', 1.0))
+        contrast = max(0.2, min(1.0, contrast))
         # Apply brightness
-        if 'brightness' in settings and settings['brightness'] != 1.0:
+        if brightness != 1.0:
             enhancer = ImageEnhance.Brightness(image)
-            image = enhancer.enhance(float(settings['brightness']))
-        
+            image = enhancer.enhance(brightness)
         # Apply contrast
-        if 'contrast' in settings and settings['contrast'] != 1.0:
+        if contrast != 1.0:
             enhancer = ImageEnhance.Contrast(image)
-            image = enhancer.enhance(float(settings['contrast']))
+            image = enhancer.enhance(contrast)
         
         # Apply rotation
         if 'rotation' in settings and settings['rotation'] != 0:

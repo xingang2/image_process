@@ -299,15 +299,32 @@ def download():
         name, ext = os.path.splitext(original_filename)
         download_filename = f"{name}_processed.jpg"
         
-        return send_file(
+        response = send_file(
             tmp_path,
             as_attachment=True,
             download_name=download_filename,
             mimetype='image/jpeg'
         )
+        
+        # Add headers to ensure proper handling
+        response.headers['Content-Type'] = 'image/jpeg'
+        response.headers['Content-Disposition'] = f'attachment; filename="{download_filename}"'
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
     
     except Exception as e:
+        print(f"Download error: {str(e)}")
         return jsonify({'error': f'Download failed: {str(e)}'}), 500
+    finally:
+        # Clean up temporary file after sending
+        try:
+            if 'tmp_path' in locals():
+                os.unlink(tmp_path)
+        except Exception as e:
+            print(f"Download: Error cleaning up temp file: {str(e)}")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

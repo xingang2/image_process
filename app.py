@@ -59,6 +59,7 @@ def add_exif_metadata(image):
         return image
     except Exception as e:
         print(f"Error adding EXIF metadata: {str(e)}")
+        # Return the image without EXIF metadata if there's an error
         return image
 
 def is_processed_image(image_path):
@@ -168,7 +169,11 @@ def process_image_with_settings(original_image_data, settings):
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
         
         # Add EXIF metadata to identify this as a processed image
-        image = add_exif_metadata(image)
+        try:
+            image = add_exif_metadata(image)
+        except Exception as e:
+            print(f"Warning: Could not add EXIF metadata: {str(e)}")
+            # Continue without EXIF metadata
         
         # Convert back to base64 as JPEG
         buffer = io.BytesIO()
@@ -199,38 +204,43 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-    
-    if file and allowed_file(file.filename):
-        # Read file and convert to base64
-        file_data = file.read()
-        img_str = base64.b64encode(file_data).decode()
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
         
-        # Determine MIME type
-        filename = secure_filename(file.filename)
-        file_ext = filename.rsplit('.', 1)[1].lower()
-        mime_type = f"image/{file_ext}" if file_ext != 'jpg' else 'image/jpeg'
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
         
-        image_data = f"data:{mime_type};base64,{img_str}"
+        if file and allowed_file(file.filename):
+            # Read file and convert to base64
+            file_data = file.read()
+            img_str = base64.b64encode(file_data).decode()
+            
+            # Determine MIME type
+            filename = secure_filename(file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower()
+            mime_type = f"image/{file_ext}" if file_ext != 'jpg' else 'image/jpeg'
+            
+            image_data = f"data:{mime_type};base64,{img_str}"
+            
+            # Store original image with a unique identifier
+            import uuid
+            image_id = str(uuid.uuid4())
+            original_images[image_id] = image_data
+            
+            return jsonify({
+                'success': True,
+                'image': image_data,
+                'filename': filename,
+                'image_id': image_id
+            })
         
-        # Store original image with a unique identifier
-        import uuid
-        image_id = str(uuid.uuid4())
-        original_images[image_id] = image_data
+        return jsonify({'error': 'Invalid file type'}), 400
         
-        return jsonify({
-            'success': True,
-            'image': image_data,
-            'filename': filename,
-            'image_id': image_id
-        })
-    
-    return jsonify({'error': 'Invalid file type'}), 400
+    except Exception as e:
+        print(f"Upload error: {str(e)}")
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 @app.route('/process', methods=['POST'])
 def process():

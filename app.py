@@ -131,7 +131,24 @@ def process_image_with_settings(original_image_data, settings):
         if 'rotation' in settings and settings['rotation'] != 0:
             angle = int(settings['rotation'])
             if angle != 0:
+                # Store original dimensions
+                original_width, original_height = image.size
+                
+                # Rotate the image with expansion
                 image = image.rotate(angle, expand=True, fillcolor=(255,255,255,0) if image.mode == 'RGBA' else (255,255,255))
+                
+                # Calculate the largest possible rectangle within the rotated image
+                rotated_width, rotated_height = image.size
+                crop_width, crop_height = largest_rotated_rect(original_width, original_height, math.radians(angle))
+                
+                # Calculate crop coordinates to center the crop
+                left = (rotated_width - crop_width) // 2
+                top = (rotated_height - crop_height) // 2
+                right = left + crop_width
+                bottom = top + crop_height
+                
+                # Crop the image to remove white corners
+                image = image.crop((left, top, right, bottom))
         
         # Apply flip operations
         if 'flip_horizontal' in settings and settings['flip_horizontal']:

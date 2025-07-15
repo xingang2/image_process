@@ -170,13 +170,24 @@ def process_image_with_settings(original_image_data, settings):
         # Add EXIF metadata to identify this as a processed image
         image = add_exif_metadata(image)
         
-        # Convert back to base64
+        # Convert back to base64 as JPEG
         buffer = io.BytesIO()
-        image.save(buffer, format='PNG')
+        
+        # Convert RGBA to RGB if necessary for JPEG
+        if image.mode == 'RGBA':
+            # Create a white background
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+            image = background
+        elif image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Save as JPEG with quality 95
+        image.save(buffer, format='JPEG', quality=95, optimize=True)
         buffer.seek(0)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         
-        return f"data:image/png;base64,{img_str}"
+        return f"data:image/jpeg;base64,{img_str}"
     
     except Exception as e:
         print(f"Error processing image: {str(e)}")
@@ -268,21 +279,21 @@ def download():
         # Convert base64 to image
         image_bytes = base64.b64decode(processed_image_data.split(',')[1])
         
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+        # Create temporary file as JPEG
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
             tmp_file.write(image_bytes)
             tmp_path = tmp_file.name
         
         # Generate download filename
         original_filename = data['filename']
         name, ext = os.path.splitext(original_filename)
-        download_filename = f"{name}_processed.png"
+        download_filename = f"{name}_processed.jpg"
         
         return send_file(
             tmp_path,
             as_attachment=True,
             download_name=download_filename,
-            mimetype='image/png'
+            mimetype='image/jpeg'
         )
     
     except Exception as e:

@@ -187,8 +187,11 @@ def process_image_with_settings(original_image_data, settings):
         elif image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Save as JPEG with quality 95
-        image.save(buffer, format='JPEG', quality=95, optimize=True)
+        # Get EXIF data if available
+        exif_data = image.info.get('exif')
+        
+        # Save as JPEG with quality 95 and EXIF data
+        image.save(buffer, format='JPEG', quality=95, optimize=True, exif=exif_data)
         buffer.seek(0)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         

@@ -115,21 +115,31 @@ def allowed_file(filename):
 def process_image_with_settings(original_image_data, settings):
     """Process image with all settings applied to the original image"""
     try:
+        print(f"Processing image with settings: {settings}")
+        
         # Convert base64 to PIL Image
         image_bytes = base64.b64decode(original_image_data.split(',')[1])
         image = Image.open(io.BytesIO(image_bytes))
         
+        print(f"Original image mode: {image.mode}, size: {image.size}")
+        
         # Clamp brightness and contrast
         brightness = float(settings.get('brightness', 1.0))
-        brightness = max(0.2, min(1.0, brightness))
+        brightness = max(0.0, min(1.0, brightness))
         contrast = float(settings.get('contrast', 1.0))
-        contrast = max(0.2, min(1.0, contrast))
+        contrast = max(0.0, min(1.0, contrast))
+        
+        print(f"Brightness: {brightness}, Contrast: {contrast}")
+        
         # Apply brightness
         if brightness != 1.0:
+            print(f"Applying brightness: {brightness}")
             enhancer = ImageEnhance.Brightness(image)
             image = enhancer.enhance(brightness)
+        
         # Apply contrast
         if contrast != 1.0:
+            print(f"Applying contrast: {contrast}")
             enhancer = ImageEnhance.Contrast(image)
             image = enhancer.enhance(contrast)
         
@@ -195,10 +205,14 @@ def process_image_with_settings(original_image_data, settings):
         buffer.seek(0)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         
+        print(f"Image processing completed successfully. Final size: {len(img_str)} characters")
+        
         return f"data:image/jpeg;base64,{img_str}"
     
     except Exception as e:
         print(f"Error processing image: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 @app.route('/')

@@ -83,28 +83,33 @@ def is_processed_image(image_path):
         print(f"Error checking EXIF metadata: {str(e)}")
         return False
 
+def calculate_rotation_scale(w, h, angle):
+    """
+    Calculate the scale factor needed to maintain original image size after rotation.
+    This ensures the rotated image fills the original dimensions without white corners.
+    """
+    # Convert angle to radians
+    angle_rad = math.radians(abs(angle))
+    
+    # Calculate the bounding box of the rotated rectangle
+    cos_a = abs(math.cos(angle_rad))
+    sin_a = abs(math.sin(angle_rad))
+    
+    # Calculate the dimensions of the rotated rectangle
+    rotated_w = w * cos_a + h * sin_a
+    rotated_h = w * sin_a + h * cos_a
+    
+    # Calculate scale factors to fit the rotated image back to original size
+    scale_x = w / rotated_w
+    scale_y = h / rotated_h
+    
+    # Use the smaller scale factor to ensure the image fits completely
+    scale = min(scale_x, scale_y)
+    
+    return scale
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def largest_rotated_rect(w, h, angle):
-    # Returns width and height of the largest possible axis-aligned rectangle
-    # within the rotated rectangle (no white corners)
-    angle = abs(angle)
-    if w <= 0 or h <= 0:
-        return 0, 0
-    quadrant = int(math.floor(angle / (math.pi / 2))) & 3
-    sign_alpha = angle if ((quadrant & 1) == 0) else math.pi - angle
-    alpha = (sign_alpha % math.pi)
-    bb_w = w * math.cos(alpha) + h * math.sin(alpha)
-    bb_h = w * math.sin(alpha) + h * math.cos(alpha)
-    gamma = math.atan2(h, w) if w < h else math.atan2(w, h)
-    delta = math.pi - alpha - gamma
-    length = h if w < h else w
-    d = length * math.cos(alpha)
-    a = d * math.sin(alpha) / math.sin(delta)
-    y = a * math.cos(gamma)
-    x = y * math.tan(gamma)
-    return int(bb_w - 2 * x), int(bb_h - 2 * y)
 
 def process_image_with_settings(original_image_data, settings):
     """Process image with all settings applied to the original image"""
@@ -134,20 +139,25 @@ def process_image_with_settings(original_image_data, settings):
                 # Store original dimensions
                 original_width, original_height = image.size
                 
-                # Rotate the image with expansion
+                # Calculate scale factor to maintain original size
+                scale = calculate_rotation_scale(original_width, original_height, angle)
+                
+                # Scale up the image before rotation to compensate for the zoom effect
+                scaled_width = int(original_width / scale)
+                scaled_height = int(original_height / scale)
+                image = image.resize((scaled_width, scaled_height), Image.Resampling.LANCZOS)
+                
+                # Rotate the scaled image
                 image = image.rotate(angle, expand=True, fillcolor=(255,255,255,0) if image.mode == 'RGBA' else (255,255,255))
                 
-                # Calculate the largest possible rectangle within the rotated image
+                # Crop to original size, centered
                 rotated_width, rotated_height = image.size
-                crop_width, crop_height = largest_rotated_rect(original_width, original_height, math.radians(angle))
+                left = (rotated_width - original_width) // 2
+                top = (rotated_height - original_height) // 2
+                right = left + original_width
+                bottom = top + original_height
                 
-                # Calculate crop coordinates to center the crop
-                left = (rotated_width - crop_width) // 2
-                top = (rotated_height - crop_height) // 2
-                right = left + crop_width
-                bottom = top + crop_height
-                
-                # Crop the image to remove white corners
+                # Crop the image to original dimensions
                 image = image.crop((left, top, right, bottom))
         
         # Apply flip operations

@@ -7,6 +7,8 @@ from werkzeug.utils import secure_filename
 import tempfile
 import math
 from typing import Sequence, Tuple, Optional
+import piexif
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -19,6 +21,67 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}
 
 # Store original images in memory (in production, consider using Redis or similar)
 original_images = {}
+
+def add_exif_metadata(image):
+    """Add EXIF metadata to identify processed images"""
+    try:
+        # Create EXIF data
+        exif_dict = {
+            "0th": {},
+            "Exif": {},
+            "GPS": {},
+            "1st": {},
+            "thumbnail": None,
+        }
+        
+        # Add software information
+        exif_dict["0th"][piexif.ImageIFD.Software] = "visual-reasoning-tool-bm"
+        
+        # Add processing information with the specific keyword
+        exif_dict["0th"][piexif.ImageIFD.ImageDescription] = "visual-reasoning-tool-bm-processed-image"
+        
+        # Add processing date
+        processing_date = datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+        exif_dict["0th"][piexif.ImageIFD.DateTime] = processing_date
+        
+        # Add artist information
+        exif_dict["0th"][piexif.ImageIFD.Artist] = "visual-reasoning-tool-bm"
+        
+        # Add copyright information
+        exif_dict["0th"][piexif.ImageIFD.Copyright] = "Processed by visual-reasoning-tool-bm"
+        
+        # Convert to EXIF bytes
+        exif_bytes = piexif.dump(exif_dict)
+        
+        # Add EXIF data to image
+        image.info["exif"] = exif_bytes
+        
+        return image
+    except Exception as e:
+        print(f"Error adding EXIF metadata: {str(e)}")
+        return image
+
+def is_processed_image(image_path):
+    """Check if an image has been processed by this tool by examining EXIF metadata"""
+    try:
+        exif_dict = piexif.load(image_path)
+        
+        # Check if the image has the specific software tag
+        if "0th" in exif_dict and piexif.ImageIFD.Software in exif_dict["0th"]:
+            software = exif_dict["0th"][piexif.ImageIFD.Software].decode('utf-8')
+            if software == "visual-reasoning-tool-bm":
+                return True
+        
+        # Check if the image has the specific description tag
+        if "0th" in exif_dict and piexif.ImageIFD.ImageDescription in exif_dict["0th"]:
+            description = exif_dict["0th"][piexif.ImageIFD.ImageDescription].decode('utf-8')
+            if description == "visual-reasoning-tool-bm-processed-image":
+                return True
+        
+        return False
+    except Exception as e:
+        print(f"Error checking EXIF metadata: {str(e)}")
+        return False
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -76,6 +139,9 @@ def process_image_with_settings(original_image_data, settings):
         
         if 'flip_vertical' in settings and settings['flip_vertical']:
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
+        
+        # Add EXIF metadata to identify this as a processed image
+        image = add_exif_metadata(image)
         
         # Convert back to base64
         buffer = io.BytesIO()

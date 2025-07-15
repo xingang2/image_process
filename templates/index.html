@@ -314,7 +314,7 @@
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📁</div>
                     <div class="upload-text">Click to upload or drag and drop</div>
-                    <div class="upload-hint">Supports: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (Max: 16MB)</div>
+                    <div class="upload-hint">Supports: PNG, JPG, JPEG, GIF, BMP, TIFF, WEBP (Max: 3MB)</div>
                 </div>
                 <input type="file" id="fileInput" accept="image/*">
             </div>
@@ -475,8 +475,8 @@
                 return;
             }
 
-            if (file.size > 16 * 1024 * 1024) {
-                showMessage('File size must be less than 16MB.', 'error');
+            if (file.size > 3 * 1024 * 1024) {
+                showMessage('File size must be less than 3MB.', 'error');
                 return;
             }
 

@@ -11,7 +11,7 @@ import piexif
 from datetime import datetime
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024  # 3MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Ensure upload folder exists

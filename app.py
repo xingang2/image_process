@@ -17,7 +17,10 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 # Ensure upload folder exists
 # os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'webp'}
+ALLOWED_EXTENSIONS = {
+    'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff', 'tif', 'webp', 
+    'ico', 'ppm', 'pgm', 'pbm', 'pnm', 'svg'
+}
 
 # Store original images in memory (in production, consider using Redis or similar)
 original_images = {}
@@ -115,13 +118,15 @@ def allowed_file(filename):
 def process_image_with_settings(original_image_data, settings):
     """Process image with all settings applied to the original image"""
     try:
-        print(f"Processing image with settings: {settings}")
-        
         # Convert base64 to PIL Image
         image_bytes = base64.b64decode(original_image_data.split(',')[1])
         image = Image.open(io.BytesIO(image_bytes))
         
-        print(f"Original image mode: {image.mode}, size: {image.size}")
+        # Handle different image modes more robustly
+        if image.mode == 'P':
+            image = image.convert('RGB')
+        elif image.mode not in ['RGB', 'RGBA', 'L', 'LA']:
+            image = image.convert('RGB')
         
         # Clamp brightness and contrast
         brightness = float(settings.get('brightness', 1.0))
@@ -129,17 +134,13 @@ def process_image_with_settings(original_image_data, settings):
         contrast = float(settings.get('contrast', 1.0))
         contrast = max(0.0, min(1.0, contrast))
         
-        print(f"Brightness: {brightness}, Contrast: {contrast}")
-        
         # Apply brightness
         if brightness != 1.0:
-            print(f"Applying brightness: {brightness}")
             enhancer = ImageEnhance.Brightness(image)
             image = enhancer.enhance(brightness)
         
         # Apply contrast
         if contrast != 1.0:
-            print(f"Applying contrast: {contrast}")
             enhancer = ImageEnhance.Contrast(image)
             image = enhancer.enhance(contrast)
         
@@ -188,12 +189,23 @@ def process_image_with_settings(original_image_data, settings):
         # Convert back to base64 as JPEG
         buffer = io.BytesIO()
         
-        # Convert RGBA to RGB if necessary for JPEG
+        # Handle different image modes for JPEG conversion
         if image.mode == 'RGBA':
             # Create a white background
             background = Image.new('RGB', image.size, (255, 255, 255))
             background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
             image = background
+        elif image.mode == 'LA':
+            # Convert grayscale with alpha to RGB
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            # Convert LA to L first, then to RGB
+            gray_image = image.convert('L')
+            background.paste(gray_image)
+            image = background
+        elif image.mode == 'L':
+            image = image.convert('RGB')
+        elif image.mode == 'P':
+            image = image.convert('RGB')
         elif image.mode != 'RGB':
             image = image.convert('RGB')
         
@@ -204,8 +216,6 @@ def process_image_with_settings(original_image_data, settings):
         image.save(buffer, format='JPEG', quality=95, optimize=True, exif=exif_data)
         buffer.seek(0)
         img_str = base64.b64encode(buffer.getvalue()).decode()
-        
-        print(f"Image processing completed successfully. Final size: {len(img_str)} characters")
         
         return f"data:image/jpeg;base64,{img_str}"
     

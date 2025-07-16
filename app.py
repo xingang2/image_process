@@ -59,11 +59,14 @@ def add_exif_metadata(image):
         # Add EXIF data to image
         image.info["exif"] = exif_bytes
         
-        return image
+        print(f"Successfully added EXIF metadata: {len(exif_bytes)} bytes")
+        return image, True  # Return success flag
     except Exception as e:
-        print(f"Error adding EXIF metadata: {str(e)}")
+        print(f"Warning: Could not add EXIF metadata: {str(e)}")
+        import traceback
+        traceback.print_exc()
         # Return the image without EXIF metadata if there's an error
-        return image
+        return image, False  # Return failure flag
 
 def is_processed_image(image_path):
     """Check if an image has been processed by this tool by examining EXIF metadata"""
@@ -179,12 +182,8 @@ def process_image_with_settings(original_image_data, settings):
         if 'flip_vertical' in settings and settings['flip_vertical']:
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
         
-        # Add EXIF metadata to identify this as a processed image
-        try:
-            image = add_exif_metadata(image)
-        except Exception as e:
-            print(f"Warning: Could not add EXIF metadata: {str(e)}")
-            # Continue without EXIF metadata
+        # Try to add EXIF metadata - but don't fail if it doesn't work
+        image, exif_added = add_exif_metadata(image)
         
         # Convert back to base64 as JPEG
         buffer = io.BytesIO()
@@ -212,8 +211,15 @@ def process_image_with_settings(original_image_data, settings):
         # Get EXIF data if available
         exif_data = image.info.get('exif')
         
-        # Save as JPEG with quality 95 and EXIF data
-        image.save(buffer, format='JPEG', quality=95, optimize=True, exif=exif_data)
+        if exif_data is not None and exif_added:
+            print(f"Saving image with EXIF data: {len(exif_data)} bytes")
+            # Save as JPEG with quality 95 and EXIF data
+            image.save(buffer, format='JPEG', quality=95, optimize=True, exif=exif_data)
+        else:
+            print("Saving image without EXIF data")
+            # Save as JPEG with quality 95 without EXIF data
+            image.save(buffer, format='JPEG', quality=95, optimize=True)
+        
         buffer.seek(0)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         
@@ -352,6 +358,76 @@ def download():
                 os.unlink(tmp_path)
         except Exception as e:
             print(f"Download: Error cleaning up temp file: {str(e)}")
+
+@app.route('/test-exif', methods=['POST'])
+def test_exif():
+    """Test endpoint to verify EXIF metadata is being added correctly"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        
+        if file and allowed_file(file.filename):
+            # Read file and convert to base64
+            file_data = file.read()
+            img_str = base64.b64encode(file_data).decode()
+            
+            # Determine MIME type
+            filename = secure_filename(file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower()
+            mime_type = f"image/{file_ext}" if file_ext != 'jpg' else 'image/jpeg'
+            
+            image_data = f"data:{mime_type};base64,{img_str}"
+            
+            # Process with minimal settings to test EXIF
+            settings = {'brightness': 1.0, 'contrast': 1.0}
+            processed_image = process_image_with_settings(image_data, settings)
+            
+            if processed_image:
+                # Decode the processed image to check EXIF
+                image_bytes = base64.b64decode(processed_image.split(',')[1])
+                temp_image = Image.open(io.BytesIO(image_bytes))
+                
+                exif_data = temp_image.info.get('exif')
+                if exif_data:
+                    # Try to load EXIF data
+                    try:
+                        exif_dict = piexif.load(exif_data)
+                        software = exif_dict.get("0th", {}).get(piexif.ImageIFD.Software, b'').decode('utf-8')
+                        description = exif_dict.get("0th", {}).get(piexif.ImageIFD.ImageDescription, b'').decode('utf-8')
+                        
+                        return jsonify({
+                            'success': True,
+                            'exif_present': True,
+                            'exif_size': len(exif_data),
+                            'software': software,
+                            'description': description,
+                            'exif_dict': str(exif_dict)
+                        })
+                    except Exception as e:
+                        return jsonify({
+                            'success': True,
+                            'exif_present': True,
+                            'exif_size': len(exif_data),
+                            'error_parsing': str(e)
+                        })
+                else:
+                    return jsonify({
+                        'success': True,
+                        'exif_present': False,
+                        'error': 'No EXIF data found in processed image'
+                    })
+            else:
+                return jsonify({'error': 'Failed to process image'}), 500
+        
+        return jsonify({'error': 'Invalid file type'}), 400
+        
+    except Exception as e:
+        print(f"Test EXIF error: {str(e)}")
+        return jsonify({'error': f'Test failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

@@ -340,8 +340,8 @@
                 <div class="control-group">
                     <h3>Brightness</h3>
                     <div class="slider-container">
-                        <input type="range" id="brightnessSlider" class="slider" min="0.0" max="1.0" step="0.01" value="1.0">
-                        <input type="number" id="brightnessNumber" min="0.0" max="1.0" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
+                        <input type="range" id="brightnessSlider" class="slider" min="0.2" max="1.0" step="0.01" value="1.0">
+                        <input type="number" id="brightnessNumber" min="0.2" max="1.0" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
                         <span id="brightnessValue" class="value-display">1.0</span>
                     </div>
                 </div>
@@ -349,8 +349,8 @@
                 <div class="control-group">
                     <h3>Contrast</h3>
                     <div class="slider-container">
-                        <input type="range" id="contrastSlider" class="slider" min="0.0" max="1.0" step="0.01" value="1.0">
-                        <input type="number" id="contrastNumber" min="0.0" max="1.0" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
+                        <input type="range" id="contrastSlider" class="slider" min="0.2" max="1.0" step="0.01" value="1.0">
+                        <input type="number" id="contrastNumber" min="0.2" max="1.0" step="0.01" value="1.0" style="width: 70px; margin-left: 10px;">
                         <span id="contrastValue" class="value-display">1.0</span>
                     </div>
                 </div>
@@ -440,7 +440,7 @@
         brightnessNumber.addEventListener('input', (e) => {
             let val = parseFloat(e.target.value);
             if (isNaN(val)) val = 1.0;
-            if (val < 0.0) val = 0.0;
+            if (val < 0.2) val = 0.2; // Changed from 0.0 to 0.2
             if (val > 1.0) val = 1.0;
             settings.brightness = val;
             brightnessSlider.value = val;
@@ -457,7 +457,7 @@
         contrastNumber.addEventListener('input', (e) => {
             let val = parseFloat(e.target.value);
             if (isNaN(val)) val = 1.0;
-            if (val < 0.0) val = 0.0;
+            if (val < 0.2) val = 0.2; // Changed from 0.0 to 0.2
             if (val > 1.0) val = 1.0;
             settings.contrast = val;
             contrastSlider.value = val;

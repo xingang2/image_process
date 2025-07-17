@@ -133,9 +133,9 @@ def process_image_with_settings(original_image_data, settings):
         
         # Clamp brightness and contrast
         brightness = float(settings.get('brightness', 1.0))
-        brightness = max(0.2, min(1.0, brightness))
+        brightness = max(0.5, min(1.0, brightness))
         contrast = float(settings.get('contrast', 1.0))
-        contrast = max(0.2, min(1.0, contrast))
+        contrast = max(0.5, min(1.0, contrast))
         
         # Apply brightness
         if brightness != 1.0:
